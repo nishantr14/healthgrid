@@ -44,6 +44,9 @@ export default function PulseHeader({ facilities, pendingRecommendations, onOpen
         >
           Copilot
         </button>
+        <a href="/field" className="text-ink-3 text-xs hover:text-ink-2">
+          Field view →
+        </a>
       </div>
     </header>
   );
