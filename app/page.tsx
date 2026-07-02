@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import FacilityPanel from "@/components/facility/FacilityPanel";
 import MapCanvas from "@/components/map/MapCanvas";
 import PulseHeader from "@/components/PulseHeader";
 import { useFacilities } from "@/hooks/useFacilities";
@@ -29,18 +30,15 @@ export default function CommandCenter() {
         </section>
 
         <aside className="w-[380px] shrink-0 flex flex-col gap-2 min-h-0 overflow-y-auto">
-          {/* FacilityPanel (Task 7) and InsightsRail (Task 8) mount here. */}
-          <div className="rounded border border-line bg-surface-1 p-3">
-            <div className="rail-label mb-2">Facility</div>
-            {selected ? (
-              <div>
-                <div className="text-ink-1 text-[15px] font-semibold">{selected.name}</div>
-                <div className="num text-ink-2 text-sm mt-1">Health score {selected.healthScore}</div>
-              </div>
-            ) : (
+          {/* InsightsRail (Task 8) mounts here. */}
+          {selected ? (
+            <FacilityPanel facility={selected} />
+          ) : (
+            <div className="rounded border border-line bg-surface-1 p-3">
+              <div className="rail-label mb-2">Facility</div>
               <div className="text-ink-3 text-xs">Select a facility on the map.</div>
-            )}
-          </div>
+            </div>
+          )}
         </aside>
       </main>
     </div>

@@ -1,0 +1,181 @@
+"use client";
+
+import type { Facility, FacilityStatus } from "@/lib/engine/types";
+import { computeRisk } from "@/lib/engine/risk";
+import { facilityForecast } from "@/lib/engine/forecast";
+import { useHistory } from "@/hooks/useHistory";
+import Sparkline from "@/components/Sparkline";
+
+const STATUS_LABEL: Record<FacilityStatus, string> = {
+  healthy: "Healthy",
+  at_risk: "At risk",
+  critical: "Critical",
+};
+const STATUS_COLOR: Record<FacilityStatus, string> = {
+  healthy: "var(--status-healthy)",
+  at_risk: "var(--status-at-risk)",
+  critical: "var(--status-critical)",
+};
+
+export default function FacilityPanel({ facility }: { facility: Facility }) {
+  const history = useHistory(facility.id, 30);
+  const breakdown = computeRisk(facility);
+  const forecasts = facilityForecast(facility);
+  const color = STATUS_COLOR[facility.status];
+  const occupancyPct = facility.beds.total ? Math.round((facility.beds.occupied / facility.beds.total) * 100) : 0;
+
+  return (
+    <div className="rounded border border-line bg-surface-1">
+      {/* Identity + score */}
+      <div className="flex items-start justify-between p-3 border-b border-line">
+        <div>
+          <div className="text-ink-1 text-[15px] font-semibold">{facility.name}</div>
+          <div className="text-ink-3 text-xs mt-0.5">
+            {facility.type} · {facility.block} block
+          </div>
+          <div
+            className="inline-flex items-center gap-1.5 mt-2 px-1.5 py-0.5 rounded text-xs font-medium"
+            style={{ color, background: `color-mix(in srgb, ${color} 16%, transparent)` }}
+          >
+            <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: color }} />
+            {STATUS_LABEL[facility.status]}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="num text-[26px] leading-none font-semibold" style={{ color }}>
+            {facility.healthScore}
+          </div>
+          <div className="rail-label mt-1">Health score</div>
+        </div>
+      </div>
+
+      {/* Score breakdown */}
+      <div className="p-3 border-b border-line">
+        <div className="rail-label mb-2">Score breakdown</div>
+        {(
+          [
+            ["Medicines", breakdown.medicine, 40],
+            ["Staffing", breakdown.staffing, 25],
+            ["Bed capacity", breakdown.beds, 15],
+            ["Patient surge", breakdown.surge, 10],
+            ["Diagnostics", breakdown.tests, 10],
+          ] as const
+        ).map(([label, value, max]) => (
+          <div key={label} className="flex items-center gap-2 py-1">
+            <span className="text-ink-2 text-xs w-24 shrink-0">{label}</span>
+            <div className="flex-1 h-1 rounded-full bg-surface-2">
+              <div
+                className="h-1 rounded-full"
+                style={{
+                  width: `${(value / max) * 100}%`,
+                  background: value / max < 0.45 ? "var(--status-critical)" : value / max < 0.75 ? "var(--status-at-risk)" : "var(--ink-3)",
+                }}
+              />
+            </div>
+            <span className="num text-ink-2 text-xs w-12 text-right">
+              {value}/{max}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Operations strip */}
+      <div className="grid grid-cols-3 divide-x divide-line border-b border-line">
+        <Metric label="Patients today" value={String(facility.patients.todayCount)} sub={trendText(facility.patients.trend7dPct)} subColor={facility.patients.trend7dPct > 15 ? "var(--status-critical)" : "var(--ink-3)"} />
+        <Metric label="Doctors" value={`${facility.staff.doctorsPresentToday}/${facility.staff.doctorsSanctioned}`} sub={`${Math.round(facility.staff.attendanceRate7d * 100)}% attendance 7d`} />
+        <Metric label="Beds" value={`${facility.beds.occupied}/${facility.beds.total}`} sub={`${occupancyPct}% occupied`} subColor={occupancyPct > 85 ? "var(--status-at-risk)" : "var(--ink-3)"} />
+      </div>
+
+      {/* Inventory */}
+      <div className="p-3 border-b border-line">
+        <div className="rail-label mb-2">Medicine inventory</div>
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="text-ink-3">
+              <th className="text-left font-normal pb-1.5">Medicine</th>
+              <th className="text-right font-normal pb-1.5">Stock</th>
+              <th className="text-right font-normal pb-1.5">30d use</th>
+              <th className="text-right font-normal pb-1.5">Supply</th>
+            </tr>
+          </thead>
+          <tbody>
+            {forecasts.map((fc) => {
+              const item = facility.inventory[fc.medicineId];
+              const usage = history.map((d) => d.consumption[fc.medicineId] ?? 0);
+              return (
+                <tr key={fc.medicineId} className="border-t border-line h-9">
+                  <td className="text-ink-1 pr-2">{fc.name}</td>
+                  <td className="num text-ink-2 text-right">
+                    {item.currentStock.toLocaleString("en-IN")} <span className="text-ink-3">{item.unit}</span>
+                  </td>
+                  <td className="text-right pl-2">
+                    <Sparkline values={usage} />
+                  </td>
+                  <td className="text-right pl-2">
+                    <DaysBadge daysLeft={fc.daysLeft} severity={fc.severity} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Diagnostics */}
+      <div className="p-3">
+        <div className="rail-label mb-2">Diagnostics</div>
+        <div className="flex flex-wrap gap-1.5">
+          {Object.entries(facility.tests).map(([name, available]) => (
+            <span
+              key={name}
+              className="px-1.5 py-0.5 rounded text-xs"
+              style={
+                available
+                  ? { color: "var(--ink-2)", background: "var(--surface-2)" }
+                  : { color: "var(--status-critical)", background: "var(--status-critical-dim)" }
+              }
+            >
+              {name}
+              {!available && " · down"}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Metric({ label, value, sub, subColor = "var(--ink-3)" }: { label: string; value: string; sub: string; subColor?: string }) {
+  return (
+    <div className="p-3">
+      <div className="rail-label">{label}</div>
+      <div className="num text-ink-1 text-[17px] mt-1">{value}</div>
+      <div className="text-xs mt-0.5" style={{ color: subColor }}>
+        {sub}
+      </div>
+    </div>
+  );
+}
+
+function trendText(pct: number): string {
+  const sign = pct > 0 ? "+" : "";
+  return `${sign}${pct}% vs prev 7d`;
+}
+
+function DaysBadge({ daysLeft, severity }: { daysLeft: number; severity: "ok" | "warning" | "critical" }) {
+  const color =
+    severity === "critical" ? "var(--status-critical)" : severity === "warning" ? "var(--status-at-risk)" : "var(--ink-3)";
+  const text = !isFinite(daysLeft)
+    ? "ample"
+    : daysLeft < 1
+      ? "Stock-out imminent"
+      : `${Math.floor(daysLeft)} days left`;
+  return (
+    <span
+      className="num inline-block px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
+      style={{ color, background: severity === "ok" ? "transparent" : `color-mix(in srgb, ${color} 16%, transparent)` }}
+    >
+      {text}
+    </span>
+  );
+}
