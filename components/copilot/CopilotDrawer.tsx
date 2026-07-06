@@ -33,7 +33,8 @@ export default function CopilotDrawer({ open, onClose }: { open: boolean; onClos
         body: JSON.stringify({ messages: next }),
       });
       const { text: reply } = await res.json();
-      setMessages((m) => [...m, { role: "model", text: reply }]);
+      // The drawer renders plain text; strip any markdown emphasis that slips through.
+      setMessages((m) => [...m, { role: "model", text: String(reply).replace(/\*\*?/g, "") }]);
     } catch {
       setMessages((m) => [...m, { role: "model", text: "Connection lost — please try again." }]);
     } finally {

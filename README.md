@@ -25,6 +25,22 @@ One continuous loop: **Observe → Understand → Predict → Recommend → Appr
 
 ![Facility intelligence panel](docs/screenshots/02-facility-panel.png)
 
+## Measured impact
+
+We replayed the district's 90 days of history and projected the next 30 days with and without HealthGrid's transfer policy (same deterministic engines, reproducible via `npx tsx scripts/impact-sim.ts`):
+
+> **54 facility-medicine stock-out days across 5 facilities in the next 30 days — reduced to 0** by 31 guarded transfers redistributing 5,157 units of existing district stock. **Zero new medicine purchased.**
+
+The simulation assumes replenishment continues on each facility's observed cadence; HealthGrid's only intervention is the same guarded transfer recommendation shown in the UI. In other words: the medicines to prevent every projected stock-out already exist inside the district — what's missing is the visibility and coordination layer.
+
+## Fits the existing stack — a decision layer, not a replacement
+
+India's public health system already records this data: **HMIS** captures facility reporting, and **DVDMS/eVIN** track drug inventory and logistics. What those systems don't do is *decide* — data flows up as monthly aggregates, and interventions flow back down weeks later. HealthGrid is designed as the **decision layer on top of that existing pipeline**:
+
+- **Ingest:** facility state can be hydrated from HMIS/DVDMS exports (the Firestore schema mirrors their entities: facility → inventory → consumption); the voice/field interface fills the real-time gap between monthly reports rather than replacing them.
+- **Act:** recommendations and approvals generate an audit trail (`events` collection) that maps directly onto the existing indent/transfer paperwork.
+- **No rip-and-replace:** district administrators keep their systems of record; HealthGrid turns those records into same-day decisions.
+
 ## Why the AI is defensible
 
 Every number on screen comes from **deterministic engines we wrote and unit-tested** (45 tests) — risk scoring, burn-rate forecasting, transfer guardrails. Gemini does what LLMs are actually good at: explanation, structured proposals, tool-calling, and multilingual audio understanding. AI proposals are validated and clamped server-side before display; nothing writes to the database without human confirmation.
