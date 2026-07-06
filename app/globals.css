@@ -94,6 +94,15 @@ h1,
   letter-spacing: -0.02em;
 }
 
+/* Field screen ambience: a faint instrument-glow so the narrow column feels
+   deliberately staged rather than floating in a void. */
+.field-ambient {
+  background:
+    radial-gradient(ellipse 70% 45% at 50% -10%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 70%),
+    radial-gradient(ellipse 55% 35% at 50% 108%, color-mix(in srgb, var(--accent) 4%, transparent), transparent 70%),
+    var(--surface-0);
+}
+
 /* Live connection indicator: slow, calm breathing — not an alarm. */
 @keyframes breathe {
   0%,

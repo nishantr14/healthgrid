@@ -20,18 +20,19 @@ const SCHEMA = {
     },
     confidence: { type: Type.NUMBER, description: "0-1: how certain you are the updates match the speech" },
     transcript: { type: Type.STRING, description: "Verbatim transcript in the language spoken" },
-    echoHindi: { type: Type.STRING, description: "One-line Hindi confirmation of what will be updated" },
+    echo: { type: Type.STRING, description: "One-line confirmation of what will be updated, in the worker's chosen language" },
   },
-  required: ["updates", "confidence", "transcript", "echoHindi"],
+  required: ["updates", "confidence", "transcript", "echo"],
 };
 
 /** Speech → structured inventory update. NO database write happens here: the
     worker always confirms on screen before anything is applied. */
 export async function POST(req: Request) {
-  const { audioBase64, mimeType, facilityId } = (await req.json()) as {
+  const { audioBase64, mimeType, facilityId, lang } = (await req.json()) as {
     audioBase64: string;
     mimeType: string;
     facilityId: string;
+    lang?: string; // "Hindi" | "Marathi" | "English" — the worker's UI language
   };
   if (!audioBase64 || !facilityId) return Response.json({ error: "audio and facilityId required" }, { status: 400 });
   // ~30s of opus audio stays well under this; longer means something is wrong.
@@ -45,7 +46,7 @@ Medicines at this facility (id: name): ${Object.values(facility.inventory)
     .map((i) => `${i.medicineId}: ${i.name}`)
     .join("; ")}.
 Tests: ${Object.keys(facility.tests).join("; ")}.
-Rules: every number in your updates must literally appear in the speech; map spoken medicine names (e.g. "ओआरएस" → ors, "पैरासिटामोल" → paracetamol) to listed ids only; if the speech is not an inventory/beds/doctors/tests update, return empty updates with confidence 0.`;
+Rules: every number in your updates must literally appear in the speech; map spoken medicine names (e.g. "ओआरएस" → ors, "पैरासिटामोल" → paracetamol) to listed ids only; write "echo" in ${lang || "Hindi"}; if the speech is not an inventory/beds/doctors/tests update, return empty updates with confidence 0.`;
 
   try {
     const res = await generateWithFallback({
