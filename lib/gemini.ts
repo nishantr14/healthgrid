@@ -25,21 +25,50 @@ function isTransient(e: unknown): boolean {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** generateContent with resilience: primary model, then (on quota exhaustion
-    or overload) the fallback model's separate bucket, with one short backoff
-    retry per model. The demo must survive free-tier weather. */
+/** Every flash-tier model has its own free-tier quota bucket; rotating
+    through them survives any single bucket running dry. Env-overridable:
+    GEMINI_MODEL_POOL="model-a,model-b". */
+const MODEL_POOL: string[] = [
+  ...new Set(
+    (process.env.GEMINI_MODEL_POOL?.split(",").map((m) => m.trim()).filter(Boolean) ?? [
+      GEMINI_MODEL,
+      GEMINI_FALLBACK_MODEL,
+      "gemini-3.5-flash",
+      "gemini-3-flash-preview",
+      "gemini-2.5-flash",
+      "gemini-2.5-flash-lite",
+    ]),
+  ),
+];
+
+// A model that just failed transiently sits out briefly so consecutive
+// requests don't hammer an exhausted bucket.
+const coolingUntil = new Map<string, number>();
+const COOLDOWN_MS = 5 * 60_000;
+
+/** generateContent with resilience: walks the model pool, skipping models in
+    cooldown, marking exhausted/overloaded buckets as it goes. The demo must
+    survive free-tier weather. */
 export async function generateWithFallback(
   params: Omit<GenerateContentParameters, "model">,
 ): Promise<GenerateContentResponse> {
-  for (const [i, model] of [GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_FALLBACK_MODEL].entries()) {
+  const now = Date.now();
+  const available = MODEL_POOL.filter((m) => (coolingUntil.get(m) ?? 0) <= now);
+  const candidates = available.length > 0 ? available : MODEL_POOL; // all cooling: try anyway
+  let lastError: unknown;
+
+  for (const [i, model] of candidates.entries()) {
     try {
       return await genai().models.generateContent({ model, ...params });
     } catch (e) {
-      if (!isTransient(e) || i === 2) throw e;
-      await sleep(1500 * (i + 1));
+      lastError = e;
+      if (!isTransient(e)) throw e;
+      coolingUntil.set(model, Date.now() + COOLDOWN_MS);
+      console.warn(`gemini: ${model} unavailable, rotating (${i + 1}/${candidates.length})`);
+      if (i < candidates.length - 1) await sleep(800);
     }
   }
-  throw new Error("unreachable");
+  throw lastError;
 }
 
 /** One retry, hard timeout, JSON-schema-constrained output. Throws
