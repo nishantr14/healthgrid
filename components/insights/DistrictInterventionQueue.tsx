@@ -4,9 +4,20 @@ import { useMemo } from "react";
 import type { Facility } from "@/lib/engine/types";
 import { interventionQueue } from "@/lib/engine/intervention";
 import type { TransferRecommendation } from "@/hooks/useRecommendations";
+import type { IncidentScenario } from "@/lib/engine/types";
 
-export default function DistrictInterventionQueue({ facilities, recommendations, onSelect }: { facilities: Facility[]; recommendations: TransferRecommendation[]; onSelect: (id: string) => void }) {
-  const items = useMemo(() => interventionQueue(facilities).slice(0, 5), [facilities]);
+export default function DistrictInterventionQueue({
+  facilities,
+  recommendations,
+  onSelect,
+  scenario,
+}: {
+  facilities: Facility[];
+  recommendations: TransferRecommendation[];
+  onSelect: (id: string) => void;
+  scenario?: IncidentScenario;
+}) {
+  const items = useMemo(() => interventionQueue(facilities, scenario).slice(0, 5), [facilities, scenario]);
   if (items.length === 0) return null;
   return (
     <div className="rounded border border-line bg-surface-1 p-3">

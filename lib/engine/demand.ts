@@ -1,4 +1,5 @@
-import type { Facility } from "./types";
+import { incidentEffects } from "./incident";
+import type { Facility, IncidentScenario } from "./types";
 
 export type DemandTrend = "rising" | "stable" | "falling";
 export type DemandPressure = "low" | "moderate" | "high" | "critical";
@@ -17,7 +18,8 @@ function finite(value: number | undefined, fallback: number): number {
   return Number.isFinite(value) ? Number(value) : fallback;
 }
 
-export function demandForecast(facility: Facility): DemandForecast {
+export function demandForecast(facility: Facility, scenario?: IncidentScenario): DemandForecast {
+  const fx = incidentEffects(scenario);
   const today = Math.max(0, finite(facility.patients?.todayCount, 0));
   const average = Math.max(0, finite(facility.patients?.avg7d, today));
   const trendPct = Math.max(-50, Math.min(100, finite(facility.patients?.trend7dPct, 0)));
@@ -27,7 +29,10 @@ export function demandForecast(facility: Facility): DemandForecast {
 
   // The weekly trend carries most weight; today's deviation adds a smaller
   // near-term signal without allowing a single noisy day to dominate.
-  const tomorrowMultiplier = Math.max(0.5, Math.min(2, 1 + trendEffect * 0.65 + todayGap * 0.35));
+  // The incident footfall lens applies after the clamp (guarded: the normal
+  // path stays byte-for-byte identical).
+  let tomorrowMultiplier = Math.max(0.5, Math.min(2, 1 + trendEffect * 0.65 + todayGap * 0.35));
+  if (fx.footfall !== 1) tomorrowMultiplier *= fx.footfall;
   const predictedTomorrow = Math.max(0, Math.round(baseline * tomorrowMultiplier));
   const dailyGrowth = Math.max(-0.05, Math.min(0.08, trendEffect / 7));
   let predicted7DayTotal = 0;
@@ -47,6 +52,9 @@ export function demandForecast(facility: Facility): DemandForecast {
   const pressure: DemandPressure = pressureScore >= 5 ? "critical" : pressureScore >= 3 ? "high" : pressureScore >= 1 ? "moderate" : "low";
 
   const reasons: string[] = [];
+  if (fx.footfall !== 1) {
+    reasons.push(`${fx.label} scenario: expected footfall adjusted +${Math.round((fx.footfall - 1) * 100)}%.`);
+  }
   if (Math.abs(trendPct) >= 5) reasons.push(`Patient demand is ${Math.abs(Math.round(trendPct))}% ${trendPct > 0 ? "above" : "below"} the previous 7-day trend.`);
   else reasons.push("Patient demand is close to its recent 7-day pattern.");
   if (Math.abs(todayGap) >= 0.1) reasons.push(`Today's footfall is ${Math.abs(Math.round(todayGap * 100))}% ${todayGap > 0 ? "above" : "below"} the 7-day average.`);
@@ -65,6 +73,6 @@ export function demandForecast(facility: Facility): DemandForecast {
     trend,
     pressure,
     confidence: Math.round(confidence * 100) / 100,
-    reasons: reasons.slice(0, 3),
+    reasons: reasons.slice(0, fx.footfall !== 1 ? 4 : 3),
   };
 }

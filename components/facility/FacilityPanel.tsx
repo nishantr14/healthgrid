@@ -1,8 +1,9 @@
 "use client";
 
-import type { Facility, FacilityStatus } from "@/lib/engine/types";
+import type { Facility, FacilityStatus, IncidentScenario } from "@/lib/engine/types";
 import { computeRisk } from "@/lib/engine/risk";
 import { facilityForecast } from "@/lib/engine/forecast";
+import { incidentEffects } from "@/lib/engine/incident";
 import { demandForecast, type DemandPressure, type DemandTrend } from "@/lib/engine/demand";
 import { useHistory } from "@/hooks/useHistory";
 import ScoreRing from "@/components/facility/ScoreRing";
@@ -19,12 +20,16 @@ const STATUS_COLOR: Record<FacilityStatus, string> = {
   critical: "var(--status-critical)",
 };
 
-export default function FacilityPanel({ facility }: { facility: Facility }) {
+export default function FacilityPanel({ facility, scenario }: { facility: Facility; scenario?: IncidentScenario }) {
   const history = useHistory(facility.id, 30);
-  const breakdown = computeRisk(facility);
-  const forecasts = facilityForecast(facility);
-  const demand = demandForecast(facility);
-  const color = STATUS_COLOR[facility.status];
+  const fx = incidentEffects(scenario);
+  const stressed = fx.footfall !== 1;
+  const breakdown = computeRisk(facility, scenario);
+  const forecasts = facilityForecast(facility, scenario);
+  const demand = demandForecast(facility, scenario);
+  const displayScore = stressed ? breakdown.total : facility.healthScore;
+  const displayStatus = stressed ? breakdown.status : facility.status;
+  const color = STATUS_COLOR[displayStatus];
   const occupancyPct = facility.beds.total ? Math.round((facility.beds.occupied / facility.beds.total) * 100) : 0;
 
   return (
@@ -36,17 +41,27 @@ export default function FacilityPanel({ facility }: { facility: Facility }) {
           <div className="text-ink-3 text-xs mt-0.5">
             {facility.type} · {facility.block} block
           </div>
-          <div
-            className="inline-flex items-center gap-1.5 mt-2 px-1.5 py-0.5 rounded text-xs font-medium"
-            style={{ color, background: `color-mix(in srgb, ${color} 16%, transparent)` }}
-          >
-            <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: color }} />
-            {STATUS_LABEL[facility.status]}
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            <span
+              className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded text-xs font-medium"
+              style={{ color, background: `color-mix(in srgb, ${color} 16%, transparent)` }}
+            >
+              <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: color }} />
+              {STATUS_LABEL[displayStatus]}
+            </span>
+            {stressed && (
+              <span
+                className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium"
+                style={{ color: "var(--status-at-risk)", background: "var(--status-at-risk-dim)" }}
+              >
+                {fx.label} · simulation
+              </span>
+            )}
           </div>
         </div>
         <div className="flex flex-col items-center">
-          <ScoreRing score={facility.healthScore} color={color} />
-          <div className="rail-label">Health score</div>
+          <ScoreRing score={displayScore} color={color} />
+          <div className="rail-label">{stressed ? "Simulated score" : "Health score"}</div>
         </div>
       </div>
 
@@ -90,7 +105,14 @@ export default function FacilityPanel({ facility }: { facility: Facility }) {
       <div className="p-3 border-b border-line bg-surface-2/40">
         <div className="flex items-center justify-between gap-2 mb-2">
           <div className="rail-label">Patient demand forecast</div>
-          <span className="num text-[10px] text-ink-3">{Math.round(demand.confidence * 100)}% confidence</span>
+          <span className="num text-[10px] text-ink-3">
+            {stressed && (
+              <span className="mr-2 font-medium" style={{ color: "var(--status-at-risk)" }}>
+                footfall adjusted +{Math.round((fx.footfall - 1) * 100)}%
+              </span>
+            )}
+            {Math.round(demand.confidence * 100)}% confidence
+          </span>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded border border-line bg-surface-1 p-2">

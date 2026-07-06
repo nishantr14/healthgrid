@@ -1,4 +1,4 @@
-import type { Facility, FacilityStatus } from "./types";
+import type { Facility, FacilityStatus, IncidentScenario } from "./types";
 import { daysToStockout } from "./forecast";
 
 export interface ScoreBreakdown {
@@ -15,10 +15,10 @@ export function statusFor(total: number): FacilityStatus {
   return total >= 80 ? "healthy" : total >= 60 ? "at_risk" : "critical";
 }
 
-export function computeRisk(f: Facility): ScoreBreakdown {
+export function computeRisk(f: Facility, scenario?: IncidentScenario): ScoreBreakdown {
   const meds = Object.values(f.inventory).filter((m) => m.essential);
   const penalty = meds.reduce((sum, m) => {
-    const d = daysToStockout(m, f.patients.trend7dPct);
+    const d = daysToStockout(m, f.patients.trend7dPct, scenario);
     return sum + (d < 3 ? 1 : d < 7 ? 0.6 : 0);
   }, 0);
   // Half the essential list in critical supply zeroes this component.

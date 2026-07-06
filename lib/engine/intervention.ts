@@ -1,6 +1,8 @@
 import { demandForecast, type DemandForecast } from "./demand";
 import { facilityForecast } from "./forecast";
-import type { Facility } from "./types";
+import { incidentEffects, medicineMultiplier } from "./incident";
+import { computeRisk } from "./risk";
+import type { Facility, IncidentScenario } from "./types";
 
 export type InterventionStatus = "Critical" | "At Risk" | "Watch";
 
@@ -15,15 +17,19 @@ export interface InterventionItem {
   demand: DemandForecast;
 }
 
-export function interventionQueue(facilities: Facility[]): InterventionItem[] {
+export function interventionQueue(facilities: Facility[], scenario?: IncidentScenario): InterventionItem[] {
+  const fx = incidentEffects(scenario);
   return facilities
     .map((facility) => {
-      const demand = demandForecast(facility);
-      const urgentStock = facilityForecast(facility).find((x) => x.severity !== "ok" && facility.inventory[x.medicineId]?.essential);
+      const demand = demandForecast(facility, scenario);
+      const urgentStock = facilityForecast(facility, scenario).find((x) => x.severity !== "ok" && facility.inventory[x.medicineId]?.essential);
       const occupancy = facility.beds.total ? facility.beds.occupied / facility.beds.total : 0;
       const unavailableTest = Object.entries(facility.tests).find(([, available]) => !available)?.[0];
       const attendance = facility.staff.attendanceRate7d;
-      let urgency = 100 - facility.healthScore;
+      // Under a scenario the stored score is re-lensed; normal keeps the
+      // stored value so ranking is byte-for-byte identical to today.
+      const riskScore = fx.footfall === 1 ? facility.healthScore : computeRisk(facility, scenario).total;
+      let urgency = 100 - riskScore;
       if (urgentStock?.severity === "critical") urgency += 24;
       else if (urgentStock) urgency += 12;
       if (demand.pressure === "critical") urgency += 20;
@@ -50,8 +56,15 @@ export function interventionQueue(facilities: Facility[]): InterventionItem[] {
         recommendedAction = "Verify test availability";
       }
 
+      if (fx.footfall !== 1) {
+        primaryReason +=
+          urgentStock && medicineMultiplier(urgentStock.medicineId, scenario) > 1
+            ? ` ${fx.label} increases ${urgentStock.name} demand and patient footfall pressure.`
+            : ` ${fx.label} raises patient footfall pressure.`;
+      }
+
       const status: InterventionStatus = urgency >= 85 || facility.status === "critical" ? "Critical" : urgency >= 50 || facility.status === "at_risk" ? "At Risk" : "Watch";
-      return { facilityId: facility.id, facilityName: facility.name, status, riskScore: facility.healthScore, urgency, primaryReason, recommendedAction, demand };
+      return { facilityId: facility.id, facilityName: facility.name, status, riskScore, urgency, primaryReason, recommendedAction, demand };
     })
     .filter((item) => item.status !== "Watch" || item.urgency >= 25)
     .sort((a, b) => b.urgency - a.urgency || a.riskScore - b.riskScore || a.facilityName.localeCompare(b.facilityName));

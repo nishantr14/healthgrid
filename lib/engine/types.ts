@@ -33,6 +33,10 @@ export interface Facility {
   lastUpdateSource: "seed" | "manual" | "voice" | "transfer";
 }
 
+/** A district-wide stress scenario applied as a client-side lens over
+    forecasts and scores. Never persisted; never mutates inventory. */
+export type IncidentScenario = "normal" | "heavy_rain" | "flood_alert" | "heatwave";
+
 export interface HistoryDay {
   date: string; // yyyy-mm-dd
   patientCount: number;
