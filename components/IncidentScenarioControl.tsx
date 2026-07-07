@@ -31,14 +31,14 @@ export default function IncidentScenarioControl({
                   ? s === "normal"
                     ? "bg-surface-2 text-ink-1"
                     : "bg-at-risk-dim text-[var(--status-at-risk)] font-medium"
-                  : "text-ink-3 hover:text-ink-2"
+                  : "text-ink-2 hover:bg-surface-2 hover:text-ink-1"
               }`}
             >
               {INCIDENTS[s].label}
             </button>
           ))}
         </div>
-        <span className="text-ink-3 text-[10px] ml-auto hidden md:block">
+        <span className="text-ink-2 text-[11px] font-medium ml-auto hidden md:block">
           Simulation lens over forecasts — no data is modified
         </span>
       </div>

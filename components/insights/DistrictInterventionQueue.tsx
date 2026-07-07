@@ -22,8 +22,8 @@ export default function DistrictInterventionQueue({
   return (
     <div className="rounded border border-line bg-surface-1 p-3">
       <div className="flex items-end justify-between gap-2 mb-2">
-        <div><div className="rail-label">District intervention queue</div><div className="text-[10px] text-ink-3 mt-0.5">Ranked by operational urgency</div></div>
-        <span className="num text-xs text-ink-3">{items.length} flagged</span>
+        <div><div className="rail-label text-ink-2">District intervention queue</div><div className="text-[10px] text-ink-2 mt-0.5">Ranked by operational urgency</div></div>
+        <span className="num rounded border border-line bg-surface-2 px-2 py-1 text-xs font-semibold text-ink-1">{items.length} flagged</span>
       </div>
       <div className="space-y-1.5">
         {items.map((item, index) => {

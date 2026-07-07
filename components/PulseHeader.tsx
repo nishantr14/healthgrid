@@ -41,12 +41,12 @@ export default function PulseHeader({ facilities, pendingRecommendations, onOpen
         <Divider />
         <div className="flex items-baseline gap-1.5">
           <span className="num text-ink-1 text-sm">{patientsToday.toLocaleString("en-IN")}</span>
-          <span className="text-ink-3 text-xs">patients today</span>
+          <span className="text-ink-2 text-xs font-medium">patients today</span>
         </div>
         <Divider />
         <div className="flex items-baseline gap-1.5">
           <span className="num text-ink-1 text-sm">{pendingRecommendations}</span>
-          <span className="text-ink-3 text-xs">pending actions</span>
+          <span className="text-ink-2 text-xs font-medium">pending actions</span>
         </div>
         <Divider />
         <button
@@ -55,7 +55,7 @@ export default function PulseHeader({ facilities, pendingRecommendations, onOpen
         >
           Copilot
         </button>
-        <Link href="/field" className="text-ink-3 text-xs hover:text-ink-2">
+        <Link href="/field" className="rounded border border-line px-2.5 py-1.5 text-xs font-medium text-ink-2 hover:border-ink-3 hover:bg-surface-2 hover:text-ink-1">
           Field view →
         </Link>
       </div>
@@ -68,7 +68,7 @@ function Stat({ dotVar, label, value }: { dotVar: string; label: string; value: 
     <div className="flex items-center gap-1.5">
       <span className="inline-block w-2 h-2 rounded-full" style={{ background: dotVar }} />
       <span className="num text-ink-1 text-sm">{value}</span>
-      <span className="text-ink-3 text-xs">{label}</span>
+      <span className="text-ink-2 text-xs font-medium">{label}</span>
     </div>
   );
 }
