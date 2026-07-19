@@ -183,25 +183,25 @@ footer(s, 2)
 # ============================ Slide 3 ======================================
 s = add_slide()
 pill(s, "IMPACT & SCALABILITY")
-text(s, 0.7, 1.0, 12.0, 0.65, "Proven in one district. Built for 800+.", size=29, bold=True)
+text(s, 0.7, 1.0, 12.0, 0.65, "One district first. Built for 800+.", size=29, bold=True)
 text(s, 0.7, 1.62, 12.0, 0.4,
-     "One month, Wardha district, existing stock only — measured by the exact engines and guardrails that run in the product.",
+     "A simulated month in Wardha district — every decision produced by the same engines and guardrails that run in the product.",
      size=13, color=GREY)
 
 impact = [
-    ("0", "Stock-out days", "Down from 54 projected facility-medicine stock-out days over 30 days"),
-    ("31", "Guarded transfers", "Between facilities — each validated against safety guardrail rules"),
-    ("5,157", "Units redistributed", "Of existing district stock — no new purchases required"),
-    ("₹0", "New medicine spent", "All demand met by smarter redistribution of current inventory"),
+    ("Stock-outs prevented", "Shortages are forecast days in advance and resolved before a single patient is turned away."),
+    ("Guarded transfers", "Every redistribution is validated against safety guardrails — and approved by a human, never auto-applied."),
+    ("Minimal new spend", "Demand is met by smarter redistribution of the stock the district already holds, not new purchases."),
+    ("No manual data entry", "Runs on the records districts already keep, updated by voice from the frontline — no added paperwork."),
 ]
 gx, gy, gw, gh, gap = 0.7, 2.42, 3.02, 1.72, 0.18
-for i, (num, label, desc) in enumerate(impact):
+for i, (label, desc) in enumerate(impact):
     x = gx + (i % 2) * (gw + gap)
     y = gy + (i // 2) * (gh + gap)
     rect(s, x, y, gw, gh, CARD, LINE, round_=0.08)
-    text(s, x + 0.24, y + 0.14, gw - 0.48, 0.55, num, size=27, color=ACCENT, bold=True)
-    text(s, x + 0.24, y + 0.72, gw - 0.48, 0.28, label, size=11.5, bold=True)
-    text(s, x + 0.24, y + 1.02, gw - 0.48, 0.62, desc, size=9, color=GREY, leading=1.05)
+    rect(s, x, y, gw, 0.06, ACCENT)
+    text(s, x + 0.24, y + 0.22, gw - 0.48, 0.55, label, size=14, color=ACCENT, bold=True)
+    text(s, x + 0.24, y + 0.62, gw - 0.48, 1.0, desc, size=10, color=GREY, leading=1.1)
 
 rx = 7.0
 text(s, rx, 2.42, 5.6, 0.28, "SCALE ON EXISTING RAILS", size=11, color=ACCENT, bold=True)
